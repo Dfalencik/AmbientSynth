@@ -17,19 +17,24 @@ void Sampler::prepareToPlay(double sampleRate, int samplesPerBlock) {
 
 void Sampler::loadSample(const juce::String& path) {
     juce::File file(path);
-    if (!file.existsAsFile()) {
-        DBG("File does not exist: " << path);
-        return;
+    try {
+        if (!file.existsAsFile()) {
+            DBG("File does not exist: " + path);
+            return;
+        }
+        formatReader.reset(formatManager.createReaderFor(file));
+        if (formatReader) {
+            juce::BigInteger midiNotes;
+            midiNotes.setRange(0, 128, true);
+            auto* sound = new juce::SamplerSound("SampleSound", *formatReader, midiNotes, 60, 0, 0.1, 10);
+            synth.addSound(sound);
+        } else {
+            DBG("Failed to load sample from path: " + path);
+        }
+    } catch (const std::exception& e) {
+        DBG("Exception loading sample: " + juce::String(e.what()));
     }
-    formatReader.reset(formatManager.createReaderFor(file));
-    if (formatReader) {
-        juce::BigInteger midiNotes;
-        midiNotes.setRange(0, 128, true);
-        auto* sound = new juce::SamplerSound("SampleSound", *formatReader, midiNotes, 60, 0, 0.1, 10);
-        synth.addSound(sound);
-    } else {
-        DBG("Failed to load sample from path: " << path);
-    }
+}
 }
 
 std::atomic<float> volume;  // Declare volume as std::atomic to ensure thread-safe modification
